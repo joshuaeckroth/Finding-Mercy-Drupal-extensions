@@ -1,0 +1,57 @@
+div.views-row {
+  clear: both;
+  margin: 90px 0;
+  padding: 90px 0;
+}
+
+div.views-row-first {
+  clear: both;
+  margin: 0;
+  padding: 0;
+}
+
+div.breed-sketch-and-misc {
+  float: left;
+  width: 260px;
+  text-align: center;
+}
+
+img.breed-size, img.breed-energy {
+  margin: 5px 0;
+}
+
+div.breed-purpose {
+  text-align: center;
+  font-weight: bold;
+}
+
+div.breed-special {
+  text-align: center;
+  font-weight: bold;
+}
+
+div.breed-title-and-description {
+  float: left;
+  width: 370px;
+  position: relative;
+  min-height: 450px;
+  padding: 0 10px 0 10px;
+}
+
+img.breed-outline {
+  position: absolute;
+  left: 390px;
+  bottom: 20px;
+}
+
+div.breed-icons {
+  float: left;
+  width: 100px;
+}
+
+img.breed-icon {
+  margin: 10px 0;
+}
+
+
+

@@ -1,0 +1,4 @@
+name = Petfinder
+description = Retrieves adoptable pets from Petfinder.
+core = 6.x
+

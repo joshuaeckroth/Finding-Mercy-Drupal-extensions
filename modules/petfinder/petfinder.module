@@ -1,0 +1,191 @@
+<?php
+
+function petfinder_cron() {
+  $key = '6bd82a2c4b390b90aaa303ad215908ec';
+  $secret = 'b81f6a612215a7b7e4c2cdd6ec6a4395';
+  $sig = md5($secret.'key='.$key);
+  $request = drupal_http_request('http://api.petfinder.com/auth.getToken?key='.$key.'&sig='.$sig);
+  $dom = new DOMDocument();
+  $dom->loadXML($request->data);
+  $token = $dom->getElementsByTagName('token')->item(0)->nodeValue;
+
+  $arg_prefix = 'key='.$key.'&token='.$token;
+
+  $breed = 'Coonhound';
+  $location = '43214';
+  _petfinder_pet_find($secret, $arg_prefix, $breed, $location);
+}
+
+function _petfinder_breed_list($arg_prefix) {
+  $args = $arg_prefix.'&animal=dog';
+  $sig = md5($secret.$args);
+  $request = drupal_http_request('http://api.petfinder.com/breed.list?'.$args.'&sig='.$sig);
+  //watchdog('petfinder', print_r($request, true));
+  //$dom = new DOMDocument();
+  //$dom->loadXML($request->data);
+}
+
+function _petfinder_pet_find($secret, $arg_prefix, $breed, $location) {
+  $args = $arg_prefix.'&animal=dog&breed='.$breed.'&location='.$location;
+  $sig = md5($secret.$args);
+  $request = drupal_http_request('http://api.petfinder.com/pet.find?'.$args.'&sig='.$sig);
+  
+  $dom = new DOMDocument();
+  $dom->loadXML($request->data);
+
+  $petids = array(); // save pet ids so we can later determine which are missing
+
+  $pets = $dom->getElementsByTagName('pet');
+  for($i = 0; $i < $pets->length; $i++) {
+    $pet = $pets->item($i);
+    $children = $pet->childNodes;
+    // foreach pet item
+    $name = '';
+    $description = '';
+    $petid = '';
+    $breeds = array();
+    $mix = '';
+    $age = '';
+    $size = '';
+    $gender = '';
+    $photos = array();
+    for($j = 0; $j < $children->length; $j++) {
+      $child = $children->item($j);
+
+      if($child->nodeName == 'id') {
+        $petid = $child->nodeValue;
+        $petids []= $child->nodeValue;
+      }
+
+      if($child->nodeName == 'breeds') {
+        $breeds = array();
+        $breedNodes = $child->childNodes;
+        // foreach breed item
+        for($k = 0; $k < $breedNodes->length; $k++) {
+          $breedItem = $breedNodes->item($k);
+          if(preg_match('/\S/', $breedItem->textContent)) {
+            $breeds[] = $breedItem->textContent;
+          }
+        }
+      }
+
+      if($child->nodeName == 'mix') {
+        $mix = ($child->nodeValue == 'no' ? 'No' : 'Yes');
+      }
+
+      if($child->nodeName ==  'age') {
+        $age = $child->nodeValue;
+      }
+
+      if($child->nodeName == 'name') {
+        $name = $child->nodeValue;
+      }
+
+      if($child->nodeName == 'size') {
+        $size = $child->nodeValue;
+      }
+
+      if($child->nodeName == 'sex') {
+        $gender = $child->nodeValue;
+      }
+
+      if($child->nodeName == 'description') {
+        $description = $child->nodeValue;
+      }
+
+      if($child->nodeName == 'media') {
+        $media = $child->childNodes;
+        // foreach media item
+        for($k = 0; $k < $media->length; $k++) {
+          $media_item = $media->item($k);
+          if($media_item->nodeName == 'photos') {
+            $photos = array();
+            $photoNodes = $media_item->childNodes;
+            // foreach photo
+            for($l = 0; $l < $photoNodes->length; $l++) {
+              $photo = $photoNodes->item($l);
+              if($photo->nodeName == 'photo') {
+                $attributes = $photo->attributes;
+                if($attributes->getNamedItem('size')->value == 'x') {
+                  $photos[] = $photo->textContent;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    if(!empty($name) && !empty($petid) && !empty($breeds)
+      && !empty($mix) && !empty($age) && !empty($size) && !empty($gender)) {
+      _petfinder_create_node($name, $description, $petid, $breeds, $mix, $age, $size, $gender, $photos);
+    }
+  }
+
+  // now determine which petfinder nodes need to be deleted;
+  // a petfinder node needs to be deleted if it is no longer found in
+  // the data returned from the find request
+  foreach($petids as $petid)
+  {
+    $result = db_query('SELECT nid FROM {content_type_petfinder_pet} WHERE field_petfinder_id_value=%d', $petid);
+    if(($nid = db_result($result)) !== FALSE)
+    {
+      node_delete($nid);
+    }
+  }
+}
+
+function _petfinder_create_node($name, $description, $petid, $breeds,
+  $mix, $age, $size, $gender, $photos)
+{
+  // check if this pet already exists
+  $result = db_query('SELECT COUNT(*) FROM {content_type_petfinder_pet} WHERE field_petfinder_id_value=%d', $petid);
+  if(0 < db_result($result))
+    return;
+
+  $node = new StdClass();
+  $node->type = 'petfinder_pet';
+  $node->name = 'admin';
+  $node->status = 1;
+  $node->promote = 0;
+  $node->sticky = 0;
+  $node->title = $name;
+  $node->teaser = '';
+  $node->body = $description;
+  $node->field_petfinder_id[0]['value'] = $petid;
+  $i = 0;
+  foreach($breeds as $breed) {
+    $node->field_petfinder_breeds[$i++]['value'] = $breed;
+  }
+  $node->field_petfinder_mix['value'] = $mix;
+  $node->field_petfinder_age['value'] = $age;
+  $node->field_petfinder_size['value'] = $size;
+  $node->field_petfinder_gender['value'] = $gender;
+
+  $savedPhotos = array();
+  foreach($photos as $photo) {
+    $request = drupal_http_request($photo);
+    if($request->code == '200') {
+      if(file_save_data($request->data, 'petfinder/photos/'.basename($photo), FILE_EXISTS_REPLACE)) {
+        $savedPhotos[] = basename($photo);
+      }
+    }
+  }
+
+  $fids = array();
+  foreach($savedPhotos as $savedPhoto) {
+    $result = db_query("INSERT INTO {files} VALUES(NULL, 1, '%s', '%s', 'image/jpeg', %d, 1, %d)",
+              $savedPhoto, 'sites/default/files/petfinder/photos/'.$savedPhoto,
+              filesize(file_create_path('petfinder/photos/'.basename($savedPhoto))), time());
+    $fids[] = db_last_insert_id('{files}', 'fid');
+  }
+
+  if($node = node_submit($node)) {
+    node_save($node);
+    $n = node_load($node->nid);
+    $i = 0;
+    foreach($fids as $fid) {
+      $n->field_petfinder_photos[$i++]['fid'] = $fid;
+    }
+    node_save($n); 
+  }
+}

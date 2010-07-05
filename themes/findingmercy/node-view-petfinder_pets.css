@@ -1,0 +1,40 @@
+div.view-petfinder-pets table td
+{
+    vertical-align: top;
+}
+
+div.petfinder-pet
+{
+    clear: both;
+    width: 390px;
+    margin-bottom: 50px;
+}
+
+.frontpage div.petfinder-pet
+{
+    margin-bottom: 0px;
+}
+
+div.petfinder-pet-name
+{
+    font-size: 1.5em;
+}
+
+div.petfinder-pet-stats
+{
+    float: left;
+    width: 200px;
+}
+
+div.petfinder-pet-photos
+{
+    float: right;
+    width: 180px;
+    text-align: center;
+}
+
+div.petfinder-pet-photos a
+{
+    display: block;
+}
+

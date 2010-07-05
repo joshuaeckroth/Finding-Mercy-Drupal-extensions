@@ -1,0 +1,13 @@
+
+a, a:active, a:visited, a:link
+{
+    color: #3a89c9;
+}
+
+#navbar li a
+{
+    background: #3a89c9;
+    color: white;
+}
+
+

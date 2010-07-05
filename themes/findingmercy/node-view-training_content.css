@@ -1,0 +1,53 @@
+div.training-category
+{
+    clear: both;
+}
+
+div.training-category-title-and-summary-even
+{
+    width: 530px;
+    float: left;
+    margin-bottom: 50px;
+    margin-right: 20px;
+    padding-top: 20px;
+}
+
+div.training-category-title-and-summary-odd
+{
+    width: 530px;
+    float: right;
+    margin-bottom: 50px;
+    margin-left: 20px;
+    padding-top: 20px;
+}
+
+div.training-category-title
+{
+    font-size: 1.6em;
+}
+
+div.training-category-thumbnail-even
+{
+    width: 200px;
+    float: right;
+    padding-top: 20px;
+}
+
+div.training-category-thumbnail-odd
+{
+    width: 200px;
+    float: left;
+    padding-top: 20px;
+}
+
+div.training-category-links
+{
+    clear: both;
+}
+
+div.training-category-links li
+{
+    float: left;
+    width: 180px;
+    font-weight: bold;
+}
