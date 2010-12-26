@@ -1,0 +1,243 @@
+<?php
+
+function flyermaker_perm() {
+  return array('make-flyer');
+}
+
+function flyermaker_menu() {
+  $items['flyermaker'] = array(
+    'title' => 'Flyer Maker',
+    'page callback' => 'flyermaker_flyermaker',
+    'access arguments' => array('make-flyer'),
+    );
+
+  return $items;
+}
+
+function flyermaker_flyermaker() {
+  return drupal_get_form('flyermaker_form');
+}
+
+function flyermaker_form() {
+  $form['#attributes']['enctype'] = 'multipart/form-data';
+  $form['name1'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Name'),
+    '#required' => TRUE,
+    '#size' => 15,
+    '#weight' => 0);
+  $form['name2'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Alternate name'),
+    '#required' => FALSE,
+    '#size' => 15,
+    '#weight' => 1);
+  $form['photo'] = array(
+    '#type' => 'file',
+    '#title' => t('Photo'),
+    '#weight' => 2);
+  $form['lastseen'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Last seen'),
+    '#required' => TRUE,
+    '#size' => 30,
+    '#weight' => 3);
+  $form['breed'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Breed'),
+    '#required' => TRUE,
+    '#size' => 30,
+    '#weight' => 4);
+  $form['color'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Color'),
+    '#required' => TRUE,
+    '#size' => 30,
+    '#weight' => 5);
+  $form['age'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Age'),
+    '#required' => TRUE,
+    '#size' => 10,
+    '#weight' => 6);
+  $form['sex'] = array(
+    '#type' => 'select',
+    '#title' => t('Sex'),
+    '#required' => TRUE,
+    '#options' => array('Male' => 'Male', 'Female' => 'Female'),
+    '#weight' => 7);
+  $form['altered'] = array(
+    '#type' => 'select',
+    '#title' => t('Altered'),
+    '#required' => TRUE,
+    '#options' => array('Yes' => 'Yes', 'No' => 'No'),
+    '#weight' => 8);
+  $form['size'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Size'),
+    '#required' => TRUE,
+    '#size' => 10,
+    '#weight' => 9);
+  $form['details'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Extra details'),
+    '#required' => FALSE,
+    '#rows' => 3,
+    '#cols' => 30,
+    '#description' => t('Enter here any extra details that will help someone identify your dog.'),
+    '#weight' => 10);
+  $form['yourname'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Your name'),
+    '#required' => TRUE,
+    '#size' => 30,
+    '#weight' => 11);
+  $form['cellphone'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Cell phone'),
+    '#required' => FALSE,
+    '#size' => 30,
+    '#weight' => 12);
+  $form['homephone'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Home phone'),
+    '#required' => FALSE,
+    '#size' => 30,
+    '#weight' => 13);
+  $form['email'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Email address'),
+    '#required' => FALSE,
+    '#size' => 50,
+    '#weight' => 14);
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Make my flyer',
+    '#weight' => 15);
+
+  return $form;
+}
+
+function flyermaker_form_validate($form, &$form_state) {
+
+}
+
+function flyermaker_form_submit($form, &$form_state) {
+  $validators = array();
+  $file = 1;
+  //$file = file_save_upload('photo', $validators, "/home/josh/findingmercy/flyers/photos");
+  if($file != 0) {
+    $latex_file_name = tempnam("/home/josh/findingmercy/flyers", "findingmercy-flyermaker-");
+    $basename = basename($latex_file_name);
+    $latex_file = fopen($latex_file_name, "w");
+    fwrite($latex_file, _flyermaker_latex($form_state));
+    fclose($latex_file);
+
+    exec("pdflatex -no-shell-escape -interaction batchmode " .
+      "-output-directory /home/josh/findingmercy/flyers $latex_file_name", $output);
+
+    $pdf_file = 'flyers/'.$basename.'.pdf';
+    copy($latex_file_name.".pdf", file_directory_path().'/'.$pdf_file);
+
+    drupal_set_message('Your flyer is ready. '.
+      'Click <a href="/sites/default/files/'.$pdf_file.'">here</a> '.
+      'to download the PDF.');
+  } else {
+    form_set_error('flyermaker_form', t('Error uploading photo.'));
+  }
+}
+
+function _flyermaker_escape_latex($str) {
+  $str = preg_replace('/\\\\/', '\\textbackslash', $str);
+  $str = preg_replace('/\#/', '\\#', $str);
+  $str = preg_replace('/'.preg_quote('$').'/', '\\\\$', $str);
+  $str = preg_replace('/%/', '\\%', $str);
+  $str = preg_replace('/&/', '\\&', $str);
+  $str = preg_replace('/_/', '\\_', $str);
+  $str = preg_replace('/\{/', '\\{', $str);
+  $str = preg_replace('/\}/', '\\}', $str);
+  $str = preg_replace('/\\^/', '\\^{}', $str);
+  $str = preg_replace('/~/', '\\~{}', $str);
+  return $str;
+}
+
+function _flyermaker_latex($form_state) {
+  $latex = "\\documentclass[letterpaper]{article}\n";
+  $latex .= "\\usepackage[letterpaper,margin=0.5in]{geometry}\n";
+  $latex .= "\\usepackage[scaled=2.0]{helvet}\n";
+  $latex .= "\\renewcommand*\\familydefault{\\sfdefault}\n";
+  $latex .= "\\usepackage{graphicx}\n";
+  $latex .= "\\usepackage{setspace}\n";
+  $latex .= "\\setlength\\parindent{0in}\n";
+  $latex .= "\\pagestyle{empty}\n";
+  $latex .= "\\begin{document}\n";
+
+  $latex .= "\\begin{center}\\Huge{\\bfseries LOST DOG}\\end{center}\n";
+  $latex .= "\\vskip 0.1in\n";
+
+  $latex .= "\\begin{center}\\Large{\\bfseries\\slshape ``"
+    . _flyermaker_escape_latex($form_state['values']['name1']);
+
+  if($form_state['values']['name2'] != "") {
+    $latex .= "'' -- ``"
+      . _flyermaker_escape_latex($form_state['values']['name2']);
+  }
+  $latex .= "''}\\end{center}\n";
+
+  $latex .= "\\begin{center}\\fbox{\\begin{minipage}{6in}\n";
+  $latex .= ""; // include graphics
+  $latex .= "\\vskip 0.1in\n";
+  $latex .= "\\raggedright\n";
+  $latex .= "{\\bfseries Last seen:} "
+    . _flyermaker_escape_latex($form_state['values']['lastseen']);
+
+  $latex .= "\n\\end{minipage}\n}\n";
+
+  $latex .= "\\vskip 0.2in\n";
+  $latex .= "\\begin{spacing}{1.5}\n";
+  $latex .= "{\\small\n";
+  $latex .= "\\begin{tabular*}{0.8\\textwidth}{@{}@{\\extracolsep{\\fill}} l l l l l @{}}\n";
+  $latex .= "{\\bfseries Breed:} & "
+    . _flyermaker_escape_latex($form_state['values']['breed'])
+    . " & {\\bfseries Sex:} & "
+    . _flyermaker_escape_latex($form_state['values']['sex'])
+    . "\\\\\n";
+  $latex .= "{\\bfseries Color:} & "
+    . _flyermaker_escape_latex($form_state['values']['color'])
+    . " & {\\bfseries Altered:} & "
+    . _flyermaker_escape_latex($form_state['values']['altered'])
+    . "\\\\\n";
+  $latex .= "{\\bfseries Age:} & "
+    . _flyermaker_escape_latex($form_state['values']['age'])
+    . " & {\\bfseries Size:} & "
+    . _flyermaker_escape_latex($form_state['values']['size'])
+    . "\n";
+  $latex .= "\\end{tabular*}\n}\n\\end{spacing}\n";
+
+  $latex .= "\\vskip 0.2in\n";
+  $latex .= "{\n\\footnotesize\n\\raggedright\n";
+  $latex .= _flyermaker_escape_latex($form_state['values']['details']);
+  $latex .= "\n}\n\\end{center}\n";
+
+  $latex .= "\\vskip 0.2in\n";
+  $latex .= "\\Large{\\bfseries Please contact me if found:}\n";
+  $latex .= "\\vskip 0.1in\n";
+  $latex .= "\\begin{spacing}{2.0}\n";
+  $latex .= "{\\small\n";
+  $latex .= "\\begin{tabular}{ll}\n";
+  $latex .= "{\\bfseries "
+    . _flyermaker_escape_latex($form_state['values']['yourname'])
+    . "} --- & "
+    . _flyermaker_escape_latex($form_state['values']['cellphone'])
+    . " (cell) // "
+    . _flyermaker_escape_latex($form_state['values']['homephone'])
+    . " (home) \\\\\n";
+  $latex .= "& {\\LARGE\\tt "
+    . _flyermaker_escape_latex($form_state['values']['email'])
+    . "}\n";
+  $latex .= "\\end{tabular}\n}\n\\end{spacing}";
+
+  $latex .= "\\end{document}\n";
+
+  return $latex;
+}

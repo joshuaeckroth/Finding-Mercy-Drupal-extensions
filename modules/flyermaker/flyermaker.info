@@ -1,0 +1,4 @@
+name = Flyer Maker
+description = Makes PDF flyers for a lost dog, adoptable dog, etc.
+core = 6.x
+package = Finding Mercy
